@@ -16,6 +16,8 @@ if __name__ == '__main__':
         image_size=(256, 256))
 
 
+
+
     model = create_model()
     print(model.summary())
 

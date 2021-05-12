@@ -15,7 +15,7 @@ class BaseNet(Model):
         self.maxpool3 = layers.MaxPooling2D()
         self.flatten = layers.Flatten()
         self.dense1 = layers.Dense(128, activation='relu')
-        self.dense2 = layers.Dense(20, activation="softmax")
+        self.dense2 = layers.Dense(20)
 
     def call(self, inputs, **kwargs):
         net = self.conv1(inputs)
