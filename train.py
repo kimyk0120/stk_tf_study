@@ -71,6 +71,7 @@ if __name__ == '__main__':
     for epoch in tqdm(range(num_epoch)):
         for idx, (img_batch, label_batch) in enumerate(train_dataset):
             loss_value = train_step(img_batch, label_batch, model, optimizer)
+            print("loss_value  20 classes : ", loss_value)
         logger.info('Epoch: {} Time: {:.2}s | Loss: {:.8f}'.format(epoch + 1, time.time() - start_time, min(loss_value).numpy()))
         start_time = time.time()
         model.save_weights(
