@@ -7,6 +7,7 @@ class BaseNet(Model):
 
     def __init__(self):
         super(BaseNet, self).__init__()
+
         self.conv1 = layers.Conv2D(16, 3, padding='same', activation='relu')
         self.maxpool1 = layers.MaxPooling2D()
         self.conv2 = layers.Conv2D(32, 3, padding='same', activation='relu')
@@ -34,3 +35,4 @@ def create_model():
     net = BaseNet()
     net(tf.random.normal((1, 256, 256, 3)))
     return net
+

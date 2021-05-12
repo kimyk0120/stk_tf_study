@@ -35,7 +35,7 @@ if __name__ == '__main__':
 
     # HYPER PARAMETER
     BATCH_SIZE = 32
-    NUM_EPOCH = 50
+    NUM_EPOCH = 10
     LEARNING_RATE = 0.01
     IMG_SIZE = (256, 256)
 
@@ -46,7 +46,9 @@ if __name__ == '__main__':
         subset="training",
         seed=123,
         image_size=IMG_SIZE,
-        batch_size=BATCH_SIZE)
+        batch_size=BATCH_SIZE,
+        label_mode="categorical"
+    )
 
     validation_dataset = tf.keras.preprocessing.image_dataset_from_directory(
         data_dir,
@@ -54,7 +56,9 @@ if __name__ == '__main__':
         subset="validation",
         seed=123,
         image_size=IMG_SIZE,
-        batch_size=BATCH_SIZE)
+        batch_size=BATCH_SIZE,
+        label_mode="categorical"
+    )
 
     # data parsing
     class_names = train_dataset.class_names
@@ -70,7 +74,7 @@ if __name__ == '__main__':
         for i in range(9):
             ax = plt.subplot(3, 3, i + 1)
             plt.imshow(images[i].numpy().astype("uint8"))
-            plt.title(class_names[labels[i]])
+            plt.title(class_names[np.argmax(labels[i])])
             plt.axis("off")
     plt.show()
 
@@ -79,10 +83,10 @@ if __name__ == '__main__':
     # 이미지 입력 성능 향상
     AUTOTUNE = tf.data.experimental.AUTOTUNE
 
-    train_dataset = train_dataset.cache().shuffle(1000).prefetch(buffer_size=AUTOTUNE)
+    train_dataset = train_dataset.cache().shuffle(50).prefetch(buffer_size=AUTOTUNE)
     validation_dataset = validation_dataset.cache().prefetch(buffer_size=AUTOTUNE)
 
-    # 데이터 증강 선언
+    # 데이터 증강
     data_augmentation = tf.keras.Sequential([
         tf.keras.layers.experimental.preprocessing.RandomFlip('horizontal'),
         tf.keras.layers.experimental.preprocessing.RandomRotation(0.2),
@@ -99,18 +103,16 @@ if __name__ == '__main__':
     #         plt.axis('off')
     # plt.show()
 
+
     # 리스케일링 레이어
     preprocess_input = tf.keras.layers.experimental.preprocessing.Rescaling(scale=1. / 255)
-
-
-    # TODO
 
     # load model
     model = create_model()
     print(model.summary())
 
     # loss 객체 정의
-    loss_object = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+    loss_object = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
 
     # 최적화 함수 정의
     optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
@@ -121,15 +123,17 @@ if __name__ == '__main__':
 
     for epoch in range(NUM_EPOCH):
         epoch_loss_avg = tf.keras.metrics.Mean()
-        epoch_accuracy = tf.keras.metrics.SparseCategoricalAccuracy()
+        epoch_accuracy = tf.keras.metrics.CategoricalAccuracy()
 
         for (img_batch, label_batch) in train_dataset:
+            img_batch = data_augmentation(img_batch)
+            img_batch = preprocess_input(img_batch)
             loss_value, grads = train_step(model, img_batch, label_batch)
             optimizer.apply_gradients(zip(grads, model.trainable_variables))
 
             epoch_loss_avg(loss_value)
             epoch_accuracy(label_batch, model(img_batch))
-            print('step -- loss : {:.3f}'.format(epoch_loss_avg.result()), ',  accuracy : {:.3%} '.format(epoch_accuracy.result()))
+            print('batch step -- loss : {:.3f}'.format(epoch_loss_avg.result()), ',  accuracy : {:.3%} '.format(epoch_accuracy.result()))
 
         # epoch 종료
         train_loss_results.append(epoch_loss_avg.result())
@@ -139,9 +143,17 @@ if __name__ == '__main__':
                                                            epoch_loss_avg.result(),
                                                            epoch_accuracy.result()))
 
-        if epoch % 10 == 0:
+        if epoch % 5 == 0:
             model.save_weights(
                 os.path.join(MODEL_DIR, 'model_epoch_{}.h5'.format(epoch + 1)))
+
+
+
+    # validation 활용
+
+    # early stopping
+
+    # 모델 평가
 
 
 
