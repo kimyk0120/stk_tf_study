@@ -14,47 +14,40 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 
 
-# loss
-def loss(model, x, y):
-    y_pred = model(x)
-    return loss_object(y_true=y, y_pred=y_pred)
-
-# 미분함수
-def train_step(model, inputs, targets):
-    with tf.GradientTape() as tape:
-        loss_value = loss(model, inputs, targets)
-    return loss_value, tape.gradient(loss_value, model.trainable_variables)
-
 
 if __name__ == '__main__':
     # CONFIG
     ROOT_DIR = Path.cwd()
     OUTPUT_DIR = osp.join(ROOT_DIR, 'output')
     MODEL_DIR = osp.join(OUTPUT_DIR, 'model_dump')
-    data_dir = "dataset/Food Classification"
+    DATA_DIR = "dataset/Food Classification"
+    SEED = 123
+    SHUFFLE_SIZE = 20
 
     # HYPER PARAMETER
-    BATCH_SIZE = 32
+    BATCH_SIZE = 64
     NUM_EPOCH = 10
-    LEARNING_RATE = 0.01
+    LEARNING_RATE = 0.001
     IMG_SIZE = (256, 256)
+    INPUT_SHAPE = (1, 256, 256, 3)
 
     # DATASET load
     train_dataset = train_ds = tf.keras.preprocessing.image_dataset_from_directory(
-        data_dir,
+        DATA_DIR,
         validation_split=0.2,
         subset="training",
-        seed=123,
+        seed=SEED,
         image_size=IMG_SIZE,
         batch_size=BATCH_SIZE,
         label_mode="categorical"
     )
+    # label_mode = "categorical" => 레이블을 one-hot vector 화 해서 return
 
     validation_dataset = tf.keras.preprocessing.image_dataset_from_directory(
-        data_dir,
+        DATA_DIR,
         validation_split=0.2,
         subset="validation",
-        seed=123,
+        seed=SEED,
         image_size=IMG_SIZE,
         batch_size=BATCH_SIZE,
         label_mode="categorical"
@@ -65,54 +58,24 @@ if __name__ == '__main__':
 
     # data check
     for image_batch, labels_batch in train_dataset:
-        print(image_batch.shape)
-        print(labels_batch.shape)
+        print("image_batch.shape : ", image_batch.shape)
+        print("labels_batch.shape : ", labels_batch.shape)
         break
-
-    plt.figure(figsize=(10, 10))
-    for images, labels in train_dataset.take(1):
-        for i in range(9):
-            ax = plt.subplot(3, 3, i + 1)
-            plt.imshow(images[i].numpy().astype("uint8"))
-            plt.title(class_names[np.argmax(labels[i])])
-            plt.axis("off")
-    plt.show()
-
-    # 데이터 전처리
 
     # 이미지 입력 성능 향상
     AUTOTUNE = tf.data.experimental.AUTOTUNE
 
-    train_dataset = train_dataset.cache().shuffle(50).prefetch(buffer_size=AUTOTUNE)
+    train_dataset = train_dataset.cache().shuffle(SHUFFLE_SIZE).prefetch(buffer_size=AUTOTUNE)
     validation_dataset = validation_dataset.cache().prefetch(buffer_size=AUTOTUNE)
-
-    # 데이터 증강
-    data_augmentation = tf.keras.Sequential([
-        tf.keras.layers.experimental.preprocessing.RandomFlip('horizontal'),
-        tf.keras.layers.experimental.preprocessing.RandomRotation(0.2),
-    ])
-
-    # plt.clf()
-    # for image, _ in train_dataset.take(1):
-    #     plt.figure(figsize=(10, 10))
-    #     first_image = image[0]
-    #     for i in range(9):
-    #         ax = plt.subplot(3, 3, i + 1)
-    #         augmented_image = data_augmentation(tf.expand_dims(first_image, 0))
-    #         plt.imshow(augmented_image[0] / 255)
-    #         plt.axis('off')
-    # plt.show()
-
-
-    # 리스케일링 레이어
-    preprocess_input = tf.keras.layers.experimental.preprocessing.Rescaling(scale=1. / 255)
 
     # load model
     model = create_model()
     print(model.summary())
 
     # loss 객체 정의
-    loss_object = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
+    # 정수로; 된; label을; 주면; 내부적으로; one - hot; vector로; 변환해서; 알아서; loss를; 계산=>; SparseCategoricalCrossentrop
+    # ont-hot vector = CategoricalCrossentropy
+    loss_fn = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
 
     # 최적화 함수 정의
     optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
@@ -121,38 +84,70 @@ if __name__ == '__main__':
     start_time = time.time()
     print("train start : ", start_time)
 
+    # metrics
+    train_loss_avg = tf.keras.metrics.Mean()
+    train_accuracy_metric = tf.keras.metrics.CategoricalAccuracy()
+
+    val_loss_avg = tf.keras.metrics.Mean()
+    val_accuracy_metric = tf.keras.metrics.CategoricalAccuracy()
+
+    # 가시화 데이터 배열
     train_loss_results = []
     train_accuracy_results = []
 
+    val_loss_results = []
+    val_accuracy_results = []
+
     for epoch in range(NUM_EPOCH):
-        epoch_loss_avg = tf.keras.metrics.Mean()
-        epoch_accuracy = tf.keras.metrics.CategoricalAccuracy()
 
         for batch_idx, (img_batch, label_batch) in enumerate(train_dataset):
-            img_batch = data_augmentation(img_batch)
-            img_batch = preprocess_input(img_batch)
-            loss_value, grads = train_step(model, img_batch, label_batch)
+
+            with tf.GradientTape() as tape:
+                logits = model(img_batch, training=True)
+                loss_value = loss_fn(label_batch, logits)
+            grads = tape.gradient(loss_value, model.trainable_weights)
             optimizer.apply_gradients(zip(grads, model.trainable_variables))
 
-            epoch_loss_avg(loss_value)
-            epoch_accuracy(label_batch, model(img_batch))
-            print(batch_idx+1, ' batch step -- loss : {:.3f}'.format(epoch_loss_avg.result()),
-                  ',  accuracy : {:.3%} '.format(epoch_accuracy.result()))
+            train_loss_avg.update_state(loss_value)
+            train_accuracy_metric.update_state(label_batch, model(img_batch))
+            # print(batch_idx + 1, ' batch step -- loss : {:.3f}'.format(train_loss_avg.result()),
+            #       ',  accuracy : {:.3%} '.format(train_accuracy_metric.result()))
+
+        # 평가 루프
+        for x_batch_val, y_batch_val in validation_dataset:
+            val_logits = model(x_batch_val, training=False)
+            val_loss_value = loss_fn(y_batch_val, val_logits)
+
+            val_loss_avg.update_state(val_loss_value)
+            val_accuracy_metric.update_state(y_batch_val, model(x_batch_val))
 
         # epoch 종료
-        train_loss_results.append(epoch_loss_avg.result())
-        train_accuracy_results.append(epoch_accuracy.result())
+        print("에포크 {}: ".format(epoch+1), ' / train loss : {:.3f}'.format(train_loss_avg.result()),
+              ' / train acc : {:.3%}'.format(train_accuracy_metric.result()),
+              ' / val loss : {:.3f}'.format(val_loss_avg.result()),
+              ' / val acc : {:.3%}'.format(val_accuracy_metric.result()))
 
-        print("에포크 {}: ".format(epoch), ' loss : ', epoch_loss_avg.result(), ' accuracy : ',
-              epoch_accuracy.result())
+        # 가시화 데이터 저장
+        train_loss_results.append(train_loss_avg.result())
+        train_accuracy_results.append(train_accuracy_metric.result())
 
-        if epoch % 2 == 0:
+        val_loss_results.append(val_loss_avg.result())
+        val_accuracy_results.append(val_accuracy_metric.result())
+
+        # Reset training metrics at the end of each epoch
+        train_loss_avg.reset_states()
+        train_accuracy_metric.reset_states()
+        val_loss_avg.reset_states()
+        val_accuracy_metric.reset_states()
+
+        if (epoch+1) % 2 == 0:
             model.save_weights(
                 os.path.join(MODEL_DIR, 'model_epoch_{}.h5'.format(epoch + 1)))
-            print("save_weights epoch {}".format(epoch))
+            print("save_weights epoch {}".format(epoch + 1))
 
     end_time = time.time() - start_time
     print("train fin : ", end_time)
+
 
 
     # validation 활용
@@ -167,6 +162,7 @@ if __name__ == '__main__':
     https://www.tensorflow.org/guide/keras/writing_a_training_loop_from_scratch?hl=ko
     
     '''
+
 
 
     print("prcs fin")
