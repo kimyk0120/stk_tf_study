@@ -118,6 +118,9 @@ if __name__ == '__main__':
     optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
 
     # 훈련 루프
+    start_time = time.time()
+    print("train start : ", start_time)
+
     train_loss_results = []
     train_accuracy_results = []
 
@@ -125,7 +128,7 @@ if __name__ == '__main__':
         epoch_loss_avg = tf.keras.metrics.Mean()
         epoch_accuracy = tf.keras.metrics.CategoricalAccuracy()
 
-        for (img_batch, label_batch) in train_dataset:
+        for batch_idx, (img_batch, label_batch) in enumerate(train_dataset):
             img_batch = data_augmentation(img_batch)
             img_batch = preprocess_input(img_batch)
             loss_value, grads = train_step(model, img_batch, label_batch)
@@ -133,29 +136,37 @@ if __name__ == '__main__':
 
             epoch_loss_avg(loss_value)
             epoch_accuracy(label_batch, model(img_batch))
-            print('batch step -- loss : {:.3f}'.format(epoch_loss_avg.result()), ',  accuracy : {:.3%} '.format(epoch_accuracy.result()))
+            print(batch_idx+1, ' batch step -- loss : {:.3f}'.format(epoch_loss_avg.result()),
+                  ',  accuracy : {:.3%} '.format(epoch_accuracy.result()))
 
         # epoch 종료
         train_loss_results.append(epoch_loss_avg.result())
         train_accuracy_results.append(epoch_accuracy.result())
 
-        print("에포크 {:03d}: 손실: {:.3f}, 정확도: {:.3%}".format(epoch,
-                                                           epoch_loss_avg.result(),
-                                                           epoch_accuracy.result()))
+        print("에포크 {}: ".format(epoch), ' loss : ', epoch_loss_avg.result(), ' accuracy : ',
+              epoch_accuracy.result())
 
-        if epoch % 5 == 0:
+        if epoch % 2 == 0:
             model.save_weights(
                 os.path.join(MODEL_DIR, 'model_epoch_{}.h5'.format(epoch + 1)))
+            print("save_weights epoch {}".format(epoch))
 
+    end_time = time.time() - start_time
+    print("train fin : ", end_time)
 
 
     # validation 활용
 
     # early stopping
 
-    # 모델 평가
+    # 모델 평가 ( repo에 test데이터 존재함)
+
+    '''
+    참고 
+    https://www.kaggle.com/itokianarafidinarivo/tutorial-keras-image-classification
+    https://www.tensorflow.org/guide/keras/writing_a_training_loop_from_scratch?hl=ko
+    
+    '''
 
 
-
-
-    print("fin")
+    print("prcs fin")
