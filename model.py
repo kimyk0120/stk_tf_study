@@ -15,30 +15,36 @@ class BaseNet(Model):
 
         self.preprocess_input = tf.keras.layers.experimental.preprocessing.Rescaling(scale=1. / 255)
 
-        self.conv1 = layers.Conv2D(16, 3, padding='same', activation='relu')
-        self.maxpool1 = layers.MaxPooling2D()
-        self.conv2 = layers.Conv2D(32, 3, padding='same', activation='relu')
-        self.maxpool2 = layers.MaxPooling2D()
-        self.conv3 = layers.Conv2D(64, 3, padding='same', activation='relu')
-        self.maxpool3 = layers.MaxPooling2D()
+        self.conv_1 = layers.Conv2D(16, 3, padding='same', activation='relu')
+        self.conv_2 = layers.Conv2D(32, 3, padding='same', activation='relu')
+        self.conv_3 = layers.Conv2D(64, 3, strides=2, padding='same', activation='relu')
+
+        self.maxpool = layers.MaxPooling2D()
+
         self.flatten = layers.Flatten()
-        self.dense1 = layers.Dense(128, activation='relu')
-        self.dense2 = layers.Dense(20, name='predictions')
+
+        self.dense_1 = layers.Dense(128, activation='relu')
+        self.dense_2 = layers.Dense(20, name='predictions')
+
+        self.dropout = layers.Dropout(0.2)
+
 
     def call(self, inputs):
         net = self.input_layer(inputs)
         net = self.data_augmentation_1(net)
         net = self.data_augmentation_2(net)
         net = self.preprocess_input(net)
-        net = self.conv1(net)
-        net = self.maxpool1(net)
-        net = self.conv2(net)
-        net = self.maxpool2(net)
-        net = self.conv3(net)
-        net = self.maxpool3(net)
+
+        net = self.conv_1(net)
+        net = self.maxpool(net)
+        net = self.conv_2(net)
+        net = self.maxpool(net)
+        net = self.conv_3(net)
+        net = self.maxpool(net)
+        net = self.dropout(net)
         net = self.flatten(net)
-        net = self.dense1(net)
-        out = self.dense2(net)
+        net = self.dense_1(net)
+        out = self.dense_2(net)
         return out
 
 

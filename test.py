@@ -8,15 +8,6 @@ from model import create_model
 
 if __name__ == '__main__':
 
-    test_dataset = test_ds = tf.keras.preprocessing.image_dataset_from_directory(
-        "dataset/Food Classification",
-        validation_split=0.2,
-        subset="validation",
-        seed=123,
-        image_size=(256, 256))
-
-
-
 
     model = create_model()
     print(model.summary())
