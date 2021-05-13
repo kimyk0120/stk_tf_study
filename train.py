@@ -48,7 +48,7 @@ if __name__ == '__main__':
     SHUFFLE_SIZE = 20
     BATCH_SIZE = 32
     NUM_EPOCH = 100
-    LEARNING_RATE = 0.0005  # 1e-3 or 5e-4
+    LEARNING_RATE = 0.001  # 1e-3 or 5e-4
     IMG_SIZE = (256, 256)
     INPUT_SHAPE = (1, 256, 256, 3)
     VALIDATION_SPLIT = 0.3
@@ -177,7 +177,6 @@ if __name__ == '__main__':
 
     # Display plots
     plt.show()
-
 
 
     # 모델 평가
