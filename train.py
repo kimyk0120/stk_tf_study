@@ -176,11 +176,11 @@ if __name__ == '__main__':
     ax[1].legend(['train', 'val'], loc='upper left')
 
     # Display plots
+    plt.savefig(OUTPUT_DIR+'/plyfig.png')  # show 메소드 전에 호출해야함
     plt.show()
-
+    plt.close()
 
     # 모델 평가
-
 
     '''
     참고 
