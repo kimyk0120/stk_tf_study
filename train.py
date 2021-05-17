@@ -45,9 +45,9 @@ if __name__ == '__main__':
 
     # HYPER PARAM
     SEED = 123
-    SHUFFLE_SIZE = 20
+    SHUFFLE_SIZE = 100
     BATCH_SIZE = 32
-    NUM_EPOCH = 100
+    NUM_EPOCH = 120
     LEARNING_RATE = 0.001  # 1e-3 or 5e-4
     IMG_SIZE = (256, 256)
     INPUT_SHAPE = (1, 256, 256, 3)
@@ -72,8 +72,9 @@ if __name__ == '__main__':
         seed=SEED,
         image_size=IMG_SIZE,
         batch_size=BATCH_SIZE,
-        label_mode="categorical"
+        label_mode="categorical",
     )
+
 
     # data parsing
     class_names = train_dataset.class_names
@@ -90,9 +91,20 @@ if __name__ == '__main__':
     train_dataset = train_dataset.cache().shuffle(SHUFFLE_SIZE).prefetch(buffer_size=AUTOTUNE)
     validation_dataset = validation_dataset.cache().prefetch(buffer_size=AUTOTUNE)
 
+
+    # 데이터 전처리 : 증강
+    augmeted_layer = tf.keras.Sequential([
+        tf.keras.layers.experimental.preprocessing.RandomContrast(0.15, seed=SEED),
+        tf.keras.layers.experimental.preprocessing.RandomFlip('horizontal_and_vertical', seed=SEED),
+        tf.keras.layers.experimental.preprocessing.RandomRotation(0.2, seed=SEED),
+        tf.keras.layers.experimental.preprocessing.RandomTranslation(0.1, 0.1, seed=SEED)
+    ])
+    train_dataset = train_dataset.map(lambda x, y: (augmeted_layer(x, training=True), y))
+
     # load model
     model = create_model()
     print(model.summary())
+    model.trainable = True
 
     # loss 객체 정의
     # 정수로; 된; label을; 주면; 내부적으로; one - hot; vector로; 변환해서; 알아서; loss를; 계산=>; SparseCategoricalCrossentrop
@@ -163,14 +175,14 @@ if __name__ == '__main__':
     # Summarize history for accuracy
     ax[0].plot(train_accuracy_results)
     ax[0].plot(val_accuracy_results)
-    ax[0].set_title('Accuracy vs Epoch')
+    ax[0].set_title('Accuracy')
     ax[0].set(xlabel='epoch', ylabel='accuracy')
     ax[0].legend(['train', 'val'], loc='upper left')
 
     # Summarize history for loss
     ax[1].plot(train_loss_results)
     ax[1].plot(val_loss_results)
-    ax[1].set_title('Loss vs Epoch')
+    ax[1].set_title('Loss')
     plt.ylabel('loss')
     plt.xlabel('epoch')
     ax[1].legend(['train', 'val'], loc='upper left')
@@ -179,6 +191,9 @@ if __name__ == '__main__':
     plt.savefig(OUTPUT_DIR+'/plyfig.png')  # show 메소드 전에 호출해야함
     plt.show()
     plt.close()
+
+    # 현재 기본 모델에서 최대 59%까지 나옴.
+    # 모델 성능 향상 => pre-trained 모델 테스트
 
     # 모델 평가
 
