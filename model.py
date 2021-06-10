@@ -16,8 +16,10 @@ class BaseNet(Model):
         self.maxpool_3 = layers.MaxPooling2D()
         self.conv_4 = layers.Conv2D(128, 3, padding='same', activation='relu')
         self.maxpool_4 = layers.MaxPooling2D()
-        self.dropout_1 = layers.Dropout(0.5)
+        self.conv_5 = layers.Conv2D(256, 3, padding='same', strides=2, activation='relu')
+        self.maxpool_5 = layers.MaxPooling2D()
         self.flatten = layers.Flatten()
+        self.dropout_1 = layers.Dropout(0.5)
         self.dense_1 = layers.Dense(512, activation='relu')
         self.dense_2 = layers.Dense(20, name='predictions')
 
@@ -32,8 +34,10 @@ class BaseNet(Model):
         net = self.maxpool_3(net)
         net = self.conv_4(net)
         net = self.maxpool_4(net)
-        net = self.dropout_1(net)
+        net = self.conv_5(net)
+        net = self.maxpool_5(net)
         net = self.flatten(net)
+        net = self.dropout_1(net)
         net = self.dense_1(net)
         out = self.dense_2(net)
         return out
